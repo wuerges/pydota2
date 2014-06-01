@@ -7,7 +7,11 @@ from .constants import HEROES, LOBBIES
 STEAM_WEB_API = "https://api.steampowered.com/IDOTA2Match_570/{resource}/V001/?key={api_key}"
 
 
-class Dota2HttpError(Exception):
+
+class Dota2Error(Exception):
+    pass
+
+class Dota2HttpError(Dota2Error):
     pass
 
 
@@ -51,7 +55,11 @@ class Dota2(object):
     def __init__(self, api_key=None):
         self._api = Api(api_key)
 
-    def match(self, match_id, **kwargs):
+    @property
+    def is_valid(self):
+        return self._api.is_valid
+
+    def find_match(self, match_id, **kwargs):
         resource = 'GetMatchDetails'
         
         kwargs['match_id'] = match_id
@@ -59,7 +67,7 @@ class Dota2(object):
 
         return DetailedMatch(match)
 
-    def match_history(self, **kwargs):
+    def find_match_history(self, **kwargs):
         resource = 'GetMatchHistory'
 
         matches = self._api.get(resource, kwargs)['result']['matches']
@@ -93,7 +101,7 @@ class Match(object):
 
     @property
     def players(self):
-        return [Player(p) for p in self.raw_data['players']]
+        return [Player(p, self.id) for p in self.raw_data['players']]
 
     @property
     def start_time(self):
@@ -110,6 +118,12 @@ class Match(object):
         lobby_type = self.raw_data['lobby_type']
 
         return LOBBIES[lobby_type]
+
+    def to_detail(self, dota_api):
+        assert isinstance(dota_api, Dota2), 'You need to pass an instance of \
+            `dota2.api.Dota2` to make an API call'
+
+        return dota_api.find_match(self.id)
 
 
 class DetailedMatch(Match):
@@ -129,7 +143,7 @@ class DetailedMatch(Match):
 
     @property
     def players(self):
-        return [DetailedPlayer(p) for p in self.raw_data['players']]
+        return [DetailedPlayer(p, self.id) for p in self.raw_data['players']]
 
 
 class Player(object):
@@ -137,8 +151,9 @@ class Player(object):
     # SteamID for anonymous players who don't reveal their actual names
     anonymous_id = 4294967295
 
-    def __init__(self, raw_data):
+    def __init__(self, raw_data, match_id):
         self.raw_data = raw_data
+        self.match_id = match_id
 
     def __repr__(self):
         return "<Player: %s. %s. %s>" % (self.id, 'Radiant' if self.is_radiant else 'Dire', self.hero)
@@ -176,11 +191,41 @@ class Player(object):
             return False
 
     @property
+    def is_anonymous(self):
+        return self.id == self.anonymous_id
+
+    @property
     def name(self):
-        if self.account_id == self.anonymous_id:
+        if self.is_anonymous:
             return "Anonymous"
         else:
             return "x"
+
+    def to_detail(self, dota_api):
+        """
+        Converts an instance of `Player` to `DetailedPlayer` by making an 
+        additional API call for detailed match information.
+
+        Additional attributes for `DetailedPlayer` include kills, deaths, GPM,
+        etc.
+        """
+
+        assert isinstance(dota_api, Dota2), 'You need to pass an instance of \
+            `dota2.api.Dota2` to make an API call'
+
+        if self.is_anonymous:
+            raise Dota2Error("Cannot look up detailed information for an \
+                anonymous player: %s" % self.id)
+
+        detailed_match = dota_api.find_match(self.match_id)
+
+        try:
+            player = next(p for p in detailed_match.players if p.id == self.id)
+        except StopIteration:
+            raise Dota2Error("Can not find detailed player information for \
+                player id: %s in match id: %s. " % (self.id, self.match_id))
+
+        return player
 
 
 class DetailedPlayer(Player):
