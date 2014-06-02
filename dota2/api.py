@@ -1,11 +1,11 @@
 from datetime import datetime
+import json
 
 import requests
 
 from .constants import HEROES, LOBBIES
 
-STEAM_WEB_API = "https://api.steampowered.com/IDOTA2Match_570/{resource}/V001/?key={api_key}"
-
+STEAM_WEB_API = "https://api.steampowered.com/{interface}/{resource}/V001/?key={api_key}"
 
 
 class Dota2Error(Exception):
@@ -31,21 +31,28 @@ class Api(object):
 
         return bool(self.get('GetMatchHistory'))
 
-    def get(self, resource, params=None):
+    def get(self, interface, resource, params=None):
         """
-        Returns a dictionary of the data requested from the Steam API.
+        Returns a dictionary of the data requested from the Steam API. 
 
+        See http://wiki.teamfortress.com/wiki/WebAPI for a list of available 
+        interfaces and resources(methods) available.
+
+        :param interface: Interface to use e.g. "IDOTA2Match_570"
         :param resource: Resource being requested e.g. "GetMatchHistory"
         :param params: Optional parameters to the requested resource as a dictionary. 
             For example, {matches_requested:10, account_id=111111}. This gets 
             added into the query string.
         """
 
-        url = STEAM_WEB_API.format(resource=resource, api_key=self.api_key)
+        url = STEAM_WEB_API.format(interface=interface,
+            resource=resource, api_key=self.api_key)
         response = requests.get(url, params=params)
 
         if response.status_code >= 400:
             # add more descriptive information
+            if response.status_code == 401:
+                raise Dota2HttpError("Unauthorized request 401. Verify API key.")
             raise Dota2HttpError("Failed to retrieve data: %s. URL: %s" % (response.status_code, url))
 
         return response.json()
@@ -60,25 +67,43 @@ class Dota2(object):
         return self._api.is_valid
 
     def find_match(self, match_id, **kwargs):
+        interface = 'IDOTA2Match_570'
         resource = 'GetMatchDetails'
         
         kwargs['match_id'] = match_id
-        match = self._api.get(resource, kwargs)['result']
+        match = self._api.get(interface, resource, kwargs)['result']
 
         return DetailedMatch(match)
 
     def find_match_history(self, **kwargs):
+        interface = 'IDOTA2Match_570'
         resource = 'GetMatchHistory'
 
-        matches = self._api.get(resource, kwargs)['result']['matches']
+        matches = self._api.get(interface, 
+            resource, kwargs)['result']['matches']
 
         return [Match(m) for m in matches]
 
+    def get_heroes(self, language='en_us', **kwargs):
+        """
+        Returns a list of all available Dota2 heroes from the Web 
+        API. 
+        """
+        interface = 'IDOTA2_570'
+        resource = 'GetHeroes'
+        kwargs['language'] = language
 
-class _X(dict):
+        heroes = self._api.get(interface, resource, kwargs)['result']['heroes']
+
+        return heroes
+
+class _ApiObject(Object):
 
     def __init__(self, raw_data):
         self.raw_data = raw_data
+
+    def to_json(self):
+        return json.dumps(self.raw_data)
 
     def lookup(self, attribute):
         try:
@@ -87,7 +112,28 @@ class _X(dict):
             raise AttributeError("Attribute not available: %s" % attribute)
 
 
-class Match(object):
+class Hero(_ApiObject):
+
+    def __init__(self, hero_id):
+        self.id = hero_id
+
+    def __repr__(self):
+        return "<%s %s>" % (self.name, self.id)
+
+    @property
+    def name(self):
+        # It's possible for there to be no hero chosen for a player 
+        # especially if the game ended in the first minute or so
+        return HEROES.get(self.hero_id, "")
+
+
+class Item(_ApiObject):
+    pass
+
+
+
+
+class Match(_ApiObject):
 
     def __init__(self, raw_data):
         self.raw_data = raw_data
@@ -97,25 +143,25 @@ class Match(object):
 
     @property
     def id(self):
-        return self.raw_data['match_id']
+        return self.lookup('match_id')
 
     @property
     def players(self):
-        return [Player(p, self.id) for p in self.raw_data['players']]
+        return [Player(p, self.id) for p in self.lookup('players')]
 
     @property
     def start_time(self):
-        start_time = self.raw_data['start_time']
+        start_time = self.lookup('start_time')
 
         return datetime.fromtimestamp(int(start_time))
 
     @property
     def sequence_number(self):
-        return self.raw_data['match_seq_num']
+        return self.lookup('match_seq_num')
 
     @property
     def lobby_type(self):
-        lobby_type = self.raw_data['lobby_type']
+        lobby_type = self.lookup('lobby_type')
 
         return LOBBIES[lobby_type]
 
@@ -135,18 +181,18 @@ class DetailedMatch(Match):
     @property
     def first_blood(self):
         """Seconds after game started where first blood occurred."""
-        return self.raw_data['first_blood_time']
+        return self.lookup('first_blood_time')
 
     @property
     def radiant_win(self):
-        return bool(self.raw_data['radiant_win'])
+        return bool(self.lookup('radiant_win'))
 
     @property
     def players(self):
-        return [DetailedPlayer(p, self.id) for p in self.raw_data['players']]
+        return [DetailedPlayer(p, self.id) for p in self.lookup('players')]
 
 
-class Player(object):
+class Player(_ApiObject):
     
     # SteamID for anonymous players who don't reveal their actual names
     anonymous_id = 4294967295
@@ -156,25 +202,23 @@ class Player(object):
         self.match_id = match_id
 
     def __repr__(self):
-        return "<Player: %s. %s. %s>" % (self.id, 'Radiant' if self.is_radiant else 'Dire', self.hero)
+        return "<Player: %s. %s. %s>" % (self.id, 'Radiant' if self.is_radiant else 'Dire', self.hero.name)
 
     @property
     def id(self):
-        return self.raw_data['account_id']
+        return self.lookup('account_id')
 
     @property
     def hero_id(self):
-        return self.raw_data['hero_id']
+        return self.lookup('hero_id')
 
     @property
     def hero(self):
-        # It's possible for there to be no hero chosen for a player 
-        # especially if the game ended in the first minute or so
-        return HEROES.get(self.hero_id,"")
+        return Hero(self.hero_id)
 
     @property
     def slot(self):
-        return self.raw_data['player_slot']
+        return self.lookup('player_slot')
 
     @property
     def is_radiant(self):
@@ -232,7 +276,7 @@ class DetailedPlayer(Player):
 
     @property
     def level(self):
-        return self.raw_data['']
+        return self.lookup('level')
 
     @property
     def kills(self):
