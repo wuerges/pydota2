@@ -15,6 +15,7 @@ pip install pydota2
 ```
 
 The only dependency is the [requests](https://github.com/kennethreitz/requests) library. 
+
 Usage
 =======
 Enter a valid API key:
@@ -24,7 +25,7 @@ Enter a valid API key:
 >>> dota = dota2.Dota2(api_key)
 >>> dota.is_valid # verify api key works
 True
->>> dota.match_history()
+>>> dota.find_match_history()
 [<Match 693301953, Co-op with bots>,
  <Match 693300359, Public matchmaking>,
  <Match 693299893, Public matchmaking>,
@@ -37,10 +38,10 @@ pass additional parameters to query a different set of matches as outlined
 [here](http://wiki.teamfortress.com/wiki/WebAPI/GetMatchHistory#Method-specific_parameters).
 For example `match_history(account_id=123456, matches_requested=100)`
 
-You can access match and player attributes like so:
+You can access match and player attributes:
 
 ```python
->>> matches = dota.match_history(account_id=12356, matches_requested=10)
+>>> matches = dota.find_match_history(account_id=12356, matches_requested=10)
 >>> match = matches[0]
 >>> match.id
 123456
@@ -60,7 +61,7 @@ The Steam Web API lets you pull more detailed match information if you have the
 match ID. You can call this information by:
 
 ```python
->>> match = dota.match(123456)
+>>> match = dota.find_match(123456)
 >>> print(match)
 class
 >>> match.players
@@ -77,7 +78,7 @@ the cost of an additional API call) like so:
 ```python
 >>> match
 dd
->>> match.to_detail()
+>>> match.to_detail(dota)
 dd
 ```
 
@@ -86,4 +87,3 @@ Contributing
 Please feel free to email me at jephdo@gmail.com.
 
 You can also submit pull requests through [github](https://github.com/jephdo/pydota2).
-
