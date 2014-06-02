@@ -139,7 +139,8 @@ class Match(_ApiObject):
         self.raw_data = raw_data
 
     def __repr__(self):
-        return '<Match: %s>' % self.id
+        return "<%s %s, %s>" % (self.__class__.__name__, 
+            self.id, self.lobby_type)
 
     @property
     def id(self):
@@ -202,7 +203,8 @@ class Player(_ApiObject):
         self.match_id = match_id
 
     def __repr__(self):
-        return "<Player: %s. %s. %s>" % (self.id, 'Radiant' if self.is_radiant else 'Dire', self.hero.name)
+        return "<%s %s, %s %s>" % (self.__class__.__name__,
+            self.id, self.team, self.hero.name)
 
     @property
     def id(self):
@@ -235,6 +237,9 @@ class Player(_ApiObject):
             return False
 
     @property
+    def team(self):
+        return 'Radiant' if self.is_radiant else 'Dire'
+
     def is_anonymous(self):
         return self.id == self.anonymous_id
 
