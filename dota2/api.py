@@ -51,6 +51,10 @@ class Dota2(object):
     def __init__(self, api_key=None):
         self._api = Api(api_key)
 
+    @property
+    def is_valid(self):
+        return self._api.is_valid
+
     def match(self, match_id, **kwargs):
         resource = 'GetMatchDetails'
         
@@ -85,7 +89,8 @@ class Match(object):
         self.raw_data = raw_data
 
     def __repr__(self):
-        return '<Match: %s>' % self.id
+        return "<%s %s, %s>" % (self.__class__.__name__, 
+            self.id, self.lobby_type)
 
     @property
     def id(self):
@@ -110,6 +115,9 @@ class Match(object):
         lobby_type = self.raw_data['lobby_type']
 
         return LOBBIES[lobby_type]
+
+    def to_detail(self):
+        return Dota2.match(self.id)
 
 
 class DetailedMatch(Match):
@@ -141,7 +149,8 @@ class Player(object):
         self.raw_data = raw_data
 
     def __repr__(self):
-        return "<Player: %s. %s. %s>" % (self.id, 'Radiant' if self.is_radiant else 'Dire', self.hero)
+        return "<%s %s, %s %s>" % (self.__class__.__name__,
+            self.id, self.team, self.hero)
 
     @property
     def id(self):
@@ -174,6 +183,10 @@ class Player(object):
             return True
         else:
             return False
+
+    @property
+    def team(self):
+        return 'Radiant' if self.is_radiant else 'Dire'
 
     @property
     def name(self):
