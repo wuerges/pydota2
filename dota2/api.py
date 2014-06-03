@@ -53,6 +53,10 @@ class Api(object):
             # add more descriptive information
             if response.status_code == 401:
                 raise Dota2HttpError("Unauthorized request 401. Verify API key.")
+            
+            if response.status_code == 503:
+                raise Dota2HttpError("The server is busy or you exceeded limits. Please wait 30s and try again.")
+
             raise Dota2HttpError("Failed to retrieve data: %s. URL: %s" % (response.status_code, url))
 
         return response.json()
