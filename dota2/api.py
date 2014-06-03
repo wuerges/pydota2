@@ -1,9 +1,9 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 import json
 
 import requests
 
-from .constants import HEROES, LOBBIES, ITEMS
+from .constants import HEROES, LOBBIES, ITEMS,  GAME_MODES
 
 STEAM_WEB_API = "https://api.steampowered.com/{interface}/{resource}/V001/?key={api_key}"
 
@@ -195,17 +195,77 @@ class Match(_ApiObject):
 class DetailedMatch(Match):
 
     @property
-    def game_mode(self):
-        pass
+    def radiant_win(self):
+        return bool(self.lookup('radiant_win'))
+
+    @property
+    def duration(self):
+        """
+        Returns length of time of the match as a Python timedelta.
+        For total number of seconds elapsed use `match.duration.total_seconds()`
+        """
+        return timedelta(seconds=self.lookup('duration'))
+
+    @property
+    def tower_status_radiant(self):
+        #TODO: map these keys to a TowerStatus class
+        # http://wiki.teamfortress.com/wiki/WebAPI/GetMatchDetails#Tower_Status
+        return self.lookup('tower_status_radiant')
+
+    @property
+    def tower_status_dire(self):
+        #TODO: map these keys to a TowerStatus class
+        # http://wiki.teamfortress.com/wiki/WebAPI/GetMatchDetails#Tower_Status
+        return self.lookup('tower_status_dire')
+
+    @property
+    def barracks_status_radiant(self):
+        #TODO: map these keys to a BarracksStatus class
+        # http://wiki.teamfortress.com/wiki/WebAPI/GetMatchDetails#Barracks_Status
+        return self.lookup('barracks_status_radiant')
+
+    @property
+    def barracks_status_dire(self):
+        return self.lookup('barracks_status_dire')
+
+    @property
+    def cluster(self):
+        """The server cluster the match was played on. Used f or downloading
+        replays of matches."""
+        return self.lookup('cluster')
 
     @property
     def first_blood(self):
-        """Seconds after game started where first blood occurred."""
+        """Seconds after game started when first blood occurred."""
         return self.lookup('first_blood_time')
 
     @property
-    def radiant_win(self):
-        return bool(self.lookup('radiant_win'))
+    def human_players(self):
+        """Number of human players in the match (as opposed to bots)"""
+        return self.lookup('human_players')
+
+    @property
+    def league_id(self):
+        return self.lookup('leagueid')
+
+    @property
+    def positive_votes(self):
+        """The number of thumbs-up the game has received from users."""
+        return self.lookup('positive_votes')
+
+    @property
+    def negative_votes(self):
+        """The number of thumbs-down the game has received from users."""
+        return self.lookup('negative_votes')
+
+    @property
+    def net_votes(self):
+        """The net number of positive and negative votes received from users."""
+        return self.positive_votes - self.negative_votes
+
+    @property
+    def game_mode(self):
+        return  GAME_MODES[self.lookup('game_mode')]
 
     @property
     def players(self):
