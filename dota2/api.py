@@ -3,7 +3,7 @@ import json
 
 import requests
 
-from .constants import HEROES, LOBBIES
+from .constants import HEROES, LOBBIES, ITEMS
 
 STEAM_WEB_API = "https://api.steampowered.com/{interface}/{resource}/V001/?key={api_key}"
 
@@ -97,7 +97,7 @@ class Dota2(object):
 
         return heroes
 
-class _ApiObject(Object):
+class _ApiObject(object):
 
     def __init__(self, raw_data):
         self.raw_data = raw_data
@@ -124,13 +124,32 @@ class Hero(_ApiObject):
     def name(self):
         # It's possible for there to be no hero chosen for a player 
         # especially if the game ended in the first minute or so
-        return HEROES.get(self.hero_id, "")
+        return HEROES.get(self.id, "")
 
 
 class Item(_ApiObject):
-    pass
+    
+    def  __init__(self, item_id):
+        self.id = item_id
+
+    def __repr__(self):
+        return "<%s %s>" % (self.name, self.id)
+
+    def __bool__(self):
+        """
+        If a player has no item in one of his slots, the item ID is mapped to 0.
+        This __bool__ method lets you do `if not item` if the item slot is 
+        empty.
+        """
+        return bool(self.id)
 
 
+    @property
+    def name(self):
+        try:
+            return ITEMS[self.id]
+        except KeyError:
+            raise Dota2Error("Item ID not recognized: %s" % self.id)
 
 
 class Match(_ApiObject):
@@ -240,6 +259,7 @@ class Player(_ApiObject):
     def team(self):
         return 'Radiant' if self.is_radiant else 'Dire'
 
+    @property
     def is_anonymous(self):
         return self.id == self.anonymous_id
 
@@ -262,14 +282,14 @@ class Player(_ApiObject):
         assert isinstance(dota_api, Dota2), 'You need to pass an instance of \
             `dota2.api.Dota2` to make an API call'
 
-        if self.is_anonymous:
-            raise Dota2Error("Cannot look up detailed information for an \
-                anonymous player: %s" % self.id)
+        # if self.is_anonymous:
+        #     raise Dota2Error("Cannot look up detailed information for an \
+        #         anonymous player: %s" % self.id)
 
         detailed_match = dota_api.find_match(self.match_id)
 
         try:
-            player = next(p for p in detailed_match.players if p.id == self.id)
+            player = next(p for p in detailed_match.players if p.slot == self.slot)
         except StopIteration:
             raise Dota2Error("Can not find detailed player information for \
                 player id: %s in match id: %s. " % (self.id, self.match_id))
@@ -280,17 +300,79 @@ class Player(_ApiObject):
 class DetailedPlayer(Player):
 
     @property
+    def kills(self):
+        return self.lookup('kills')
+
+    @property
+    def deaths(self):
+        return self.lookup('deaths')
+
+    @property
+    def assists(self):
+        return self.lookup('assists')
+
+    @property
+    def leaver_status(self):
+        return 
+
+    @property
+    def gold(self):
+        return self.lookup('gold')
+
+    @property
+    def last_hits(self):
+        return self.lookup('last_hits')
+
+    @property
+    def denies(self):
+        return self.lookup('denies')
+
+    @property
+    def gpm(self):
+        """Gold per minute."""
+        return self.lookup('gold_per_min')
+
+    @property
+    def xpm(self):
+        return self.lookup('xp_per_min')
+
+    @property
+    def gold_spent(self):
+        return self.lookup('gold_spent')
+
+    @property
+    def hero_damage(self):
+        return self.lookup('hero_damage')
+
+    @property
+    def tower_damage(self):
+        return self.lookup('tower_damage')
+
+    @property
+    def hero_healing(self):
+        return self.lookup('hero_healing')
+
+    @property
     def level(self):
         return self.lookup('level')
 
     @property
-    def kills(self):
-        pass
-
-    @property
-    def deaths(self):
-        pass
-
-    @property
     def items(self):
+        """
+        Returns a list of items the player had at end of game. Note that this 
+        ALWAYS returns six items -- one for each item slot. Empty items have an 
+        id of 0 and you can test their truthiness (i.e. `if not item`)
+
+        items[0]: top-left inventory item
+        items[1]: top-center inventory item
+        items[2]: top-right inventory item
+        items[3]: bottom-left inventory item
+        items[4]: bottom-center inventory item
+        items[5]: bottom-right inventory item
+        """
+
+        return tuple(Item(self.lookup('item_' + str(i))) for i in range(6))
+
+    @property
+    def abilities(self):
         pass
