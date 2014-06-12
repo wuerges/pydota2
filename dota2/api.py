@@ -275,6 +275,18 @@ class DetailedMatch(Match):
     def players(self):
         return [DetailedPlayer(p, self.id) for p in self.lookup('players')]
 
+    @property
+    def kills_radiant(self):
+        """Number of kills the radiant team achieved during the match."""
+        return sum(p.kills for p in self.players if p.is_radiant)
+
+    @property
+    def kills_dire(self):
+        """Number of kills the dire team achieved during the match."""
+        return sum(p.kills for p in self.players if not p.is_radiant)
+
+
+
 
 class Player(_ApiObject):
     
@@ -374,6 +386,10 @@ class DetailedPlayer(Player):
     @property
     def assists(self):
         return self.lookup('assists')
+
+    @property
+    def kda(self):
+        return (1. * self.kills + self.assists) / self.deaths
 
     @property
     def leaver_status(self):
