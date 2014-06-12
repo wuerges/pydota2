@@ -9,19 +9,17 @@ Installation
 =============
 
 Installation can be done via `pip` and should be Python 2 and 3 compatible:
-
 ```sh
 pip install pydota2
 ```
-
 The only dependency is the [requests](https://github.com/kennethreitz/requests) library. 
 
 Usage
 =======
 Enter a valid API key:
-```python
+```sh
 >>> import dota2
->>> api_key = 'A1B2C3D4E5F6'
+>>> api_key = 'E5DAEA335681A46421D8EE7FF175E4BD'
 >>> dota = dota2.Dota2(api_key)
 >>> dota.is_valid # verify api key works
 True
@@ -33,25 +31,30 @@ True
  <Match 693283739, Co-op with bots>]
 ```
 
-Just calling `match_history` will return 25 of the most recent games. You can 
+Just calling `find_match_history` will return 25 of the most recent games. You can 
 pass additional parameters to query a different set of matches as outlined
 [here](http://wiki.teamfortress.com/wiki/WebAPI/GetMatchHistory#Method-specific_parameters).
-For example `match_history(account_id=123456, matches_requested=100)`
+For example `find_match_history(account_id=123456, matches_requested=100)`
 
 You can access match and player attributes:
 
-```python
+```sh
 >>> matches = dota.find_match_history(account_id=12356, matches_requested=10)
 >>> match = matches[0]
 >>> match.id
-123456
+712397156
 >>> match.start_time
-
+datetime.datetime(2014, 6, 10, 14, 58, 40)
 >>> match.lobby_type
-
+'Ranked'
 >>> match.players 
-
+[<Player 64931387, Radiant Dazzle>, 
+<Player 101338368, Radiant Anti-Mage>, 
+<Player 101971954, Radiant Queen of Pain>, 
+...
+<Player 4294967295, Dire Ancient Apparition>]
 >>> match.players[5].hero
+<Centaur Warrunner 96>
 ```
 
 More Detailed Information
@@ -61,10 +64,23 @@ The Steam Web API lets you pull more detailed match information if you have the
 match ID. You can call this information by:
 
 ```python
->>> match = dota.find_match(123456)
->>> print(match)
-class
->>> match.players
+>>> match = dota.find_match(712397156)
+>>> match
+<DetailedMatch 712397156, Ranked>
+>>> match.radiant_win
+False
+>>> match.duration
+datetime.timedelta(0, 2000)
+>>> match.duration.total_seconds()
+2000.0
+>>> match.kills_radiant
+12
+>>> match.kills_dire
+37
+>>> match.players[6].gpm
+563
+>>> match.players[6].kda
+5.5
 ```
 
 There is a difference between `Match` vs. `DetailedMatch` and `Player` vs. `DetailedPlayer` objects.
@@ -77,9 +93,9 @@ the cost of an additional API call) like so:
 
 ```python
 >>> match
-dd
+<Match 712360553, Ranked>
 >>> match.to_detail(dota)
-dd
+<DetailedMatch 712360553, Ranked>
 ```
 
 Contributing
