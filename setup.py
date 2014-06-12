@@ -2,7 +2,7 @@ from distutils.core import setup
 
 setup(
     name='pydota2',
-    version='0.01',
+    version='0.03',
     description='Dota2 match history python wrapper for the Steam Web API',
     url='http://github.com/jephdo/pydota2/',
     author='Jeph Do',
