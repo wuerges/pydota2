@@ -34,12 +34,12 @@ True
 Just calling `find_match_history` will return 25 of the most recent games. You can 
 pass additional parameters to query a different set of matches as outlined
 [here](http://wiki.teamfortress.com/wiki/WebAPI/GetMatchHistory#Method-specific_parameters).
-For example `find_match_history(account_id=123456, matches_requested=100)`
+For example `find_match_history(account_id=64931387, matches_requested=100)`
 
 You can access match and player attributes:
 
 ```sh
->>> matches = dota.find_match_history(account_id=12356, matches_requested=10)
+>>> matches = dota.find_match_history(account_id=64931387, matches_requested=10)
 >>> match = matches[0]
 >>> match.id
 712397156
