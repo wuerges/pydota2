@@ -88,6 +88,30 @@ class Dota2(object):
 
         return [Match(m) for m in matches]
 
+    def get_match_history_by_sequence(self, sequence_number=None, 
+        matches_requested=None):
+        """
+
+        """
+
+        interface = 'IDOTA2Match_570'
+        resource = 'GetMatchHistoryBySequenceNum'
+
+        options = {}
+        if sequence_number is not None:
+            options['start_at_match_seq_num'] = sequence_number
+
+        if matches_requested:
+            if matches_requested > 25:
+                raise Dota2HttpError("Matches requested per API call to " \
+                    "GetMatchHistoryBySequenceNum must be no greater than 25.")
+
+            options['matches_requested'] = matches_requested
+
+        matches = self._api.get(interface, resource, options)['result']['matches']
+
+        return [DetailedMatch(m) for m in matches]
+
     def get_heroes(self, language='en_us', **kwargs):
         """
         Returns a list of all available Dota2 heroes from the Web 
