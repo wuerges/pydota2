@@ -41,8 +41,8 @@ def scrape(api, directory, sequence_number=None, matches_requested=None,
 def write_to_file(directory, matches):
     first_match, last_match = min(m.sequence_number for m in matches), max(m.sequence_number for m in matches)
 
-    filename = "%s-%s" % (first_match, last_match) 
-    path = os.path.join(directory, filename + '.json')
+    filename = "%s_%s-%s.json" % (time.time(), first_match, last_match) 
+    path = os.path.join(directory, filename)
 
     with open(path, 'w') as outfile:
         json.dump([m.raw_data for m in matches], outfile, 
