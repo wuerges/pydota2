@@ -98,6 +98,13 @@ the cost of an additional API call) like so:
 <DetailedMatch 712360553, Ranked>
 ```
 
+Testing
+==========
+Download the sources and then run:
+```bash
+DOTA_API_KEY="<YOUR API KEY HERE>" python3 tests.py
+```
+
 Contributing
 ============
 Please feel free to email me at jephdo@gmail.com.
